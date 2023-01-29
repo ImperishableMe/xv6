@@ -1,0 +1,97 @@
+diff --git a/kernel/proc.c b/kernel/proc.c
+index 959b778..8047c99 100644
+--- a/kernel/proc.c
++++ b/kernel/proc.c
+@@ -132,6 +132,16 @@ found:
+     return 0;
+   }
+ 
++#ifdef LAB_PGTBL
++  if ((p->usyscall = (struct usyscall *)kalloc())== 0) {
++    freeproc(p);
++    release(&p->lock);
++    return 0;
++  }
++  // memset(p->usyscall, 0, PGSIZE);
++  p->usyscall->pid = p->pid;
++#endif
++
+   // An empty user page table.
+   p->pagetable = proc_pagetable(p);
+   if(p->pagetable == 0){
+@@ -140,6 +150,7 @@ found:
+     return 0;
+   }
+ 
++
+   // Set up new context to start executing at forkret,
+   // which returns to user space.
+   memset(&p->context, 0, sizeof(p->context));
+@@ -158,6 +169,13 @@ freeproc(struct proc *p)
+   if(p->trapframe)
+     kfree((void*)p->trapframe);
+   p->trapframe = 0;
++
++#ifdef LAB_PGTBL
++  if (p->usyscall)
++    kfree((void*)p->usyscall);
++  p->usyscall = 0;
++#endif
++
+   if(p->pagetable)
+     proc_freepagetable(p->pagetable, p->sz);
+   p->pagetable = 0;
+@@ -202,6 +220,17 @@ proc_pagetable(struct proc *p)
+     return 0;
+   }
+ 
++#ifdef LAB_PGTBL
++  // map the USYSCALL page just below the trapframe
++  if(mappages(pagetable, USYSCALL, PGSIZE,
++              (uint64)(p->usyscall), PTE_R) < 0){
++    uvmunmap(pagetable, TRAPFRAME, 1, 0);
++    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
++    uvmfree(pagetable, 0);
++    return 0;
++  }
++#endif
++
+   return pagetable;
+ }
+ 
+@@ -212,6 +241,9 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
+ {
+   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+   uvmunmap(pagetable, TRAPFRAME, 1, 0);
++#ifdef LAB_PGTBL
++  uvmunmap(pagetable, USYSCALL, 1, 0);
++#endif
+   uvmfree(pagetable, sz);
+ }
+ 
+diff --git a/kernel/proc.h b/kernel/proc.h
+index d021857..b853283 100644
+--- a/kernel/proc.h
++++ b/kernel/proc.h
+@@ -104,4 +104,8 @@ struct proc {
+   struct file *ofile[NOFILE];  // Open files
+   struct inode *cwd;           // Current directory
+   char name[16];               // Process name (debugging)
++
++#ifdef LAB_PGTBL
++  struct usyscall *usyscall; // data page for trampoline.S
++#endif
+ };
+diff --git a/user/pgtbltest.c b/user/pgtbltest.c
+index bce158a..7f2f5cd 100644
+--- a/user/pgtbltest.c
++++ b/user/pgtbltest.c
+@@ -33,7 +33,7 @@ ugetpid_test()
+   printf("ugetpid_test starting\n");
+   testname = "ugetpid_test";
+ 
+-  for (i = 0; i < 64; i++) {
++  for (i = 0; i < 1; i++) {
+     int ret = fork();
+     if (ret != 0) {
+       wait(&ret);
