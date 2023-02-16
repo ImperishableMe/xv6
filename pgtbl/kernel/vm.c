@@ -252,6 +252,34 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
   return newsz;
 }
 
+void printwalk(pagetable_t pagetable, int dep)
+{
+  if (dep == 4) return;
+  for (int i = 0; i < 512; i++)
+  {
+    pte_t pte = pagetable[i];
+    if (pte & PTE_V)
+    {
+      // this PTE points to a lower-level page table.
+      for (int d = 0; d < dep; d++)
+      {
+        printf(" ..");
+      }
+      uint64 child = PTE2PA(pte);
+      printf("%d: pte %p pa %p\n", i, pte, child);
+      printwalk((pagetable_t)child, dep + 1);
+    }
+  }
+}
+// Recursively free page-table pages.
+// All leaf mappings must already have been removed.
+void vmprint(pagetable_t pagetable)
+{
+  printf("page table %p\n", pagetable);
+  printwalk(pagetable, 1);
+}
+
+
 // Deallocate user pages to bring the process size from oldsz to
 // newsz.  oldsz and newsz need not be page-aligned, nor does newsz
 // need to be less than oldsz.  oldsz can be larger than the actual

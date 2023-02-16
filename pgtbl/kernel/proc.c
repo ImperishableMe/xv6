@@ -217,7 +217,6 @@ proc_pagetable(struct proc *p)
 
   // map the trapframe page just below the trampoline page, for
   // trampoline.S.
-  printf("Mapping TRAPFRAME page for pid %d, PE -> %p\n", p->pid, p->trapframe);
   if (mappages(pagetable, TRAPFRAME, PGSIZE,
                (uint64)(p->trapframe), PTE_R | PTE_W) < 0)
   {
@@ -228,7 +227,6 @@ proc_pagetable(struct proc *p)
 
 #ifdef LAB_PGTBL
   // map the USYSCALL page just below the trapframe
-  printf("Mapping USYSCALL page for pid %d, PE -> %p\n", p->pid, p->usyscall);
   if (mappages(pagetable, USYSCALL, PGSIZE,
                (uint64)(p->usyscall), PTE_R | PTE_U) < 0)
   {
@@ -237,7 +235,6 @@ proc_pagetable(struct proc *p)
     uvmfree(pagetable, 0);
     return 0;
   }
-  printf("Done with USYSCALL mapping for processing with pid %d\n", p->pid);
 #endif
 
   return pagetable;
