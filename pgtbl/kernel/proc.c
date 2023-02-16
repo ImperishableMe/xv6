@@ -731,3 +731,25 @@ void procdump(void)
     printf("\n");
   }
 }
+
+uint32 get_access_mask(uint64 va, int npages) {
+  uint32 mask = 0;
+  pagetable_t pagetable = myproc()->pagetable;
+  uint64 a = PGROUNDDOWN(va);
+  pte_t *pte;
+
+  for (int pos = 0; pos < npages;  pos++)
+  {
+    if ((pte = walk(pagetable, a, 0)) == 0)
+      panic("get_access_mask: walk");
+    if ((*pte & PTE_V) == 0)
+      panic("get_access_mask: not mapped");
+    if (*pte & PTE_A) {
+      printf("user accessed page %d page\n", pos);
+      mask |= (1U << pos);
+      *pte &= (~PTE_A);
+    }
+    a += PGSIZE;
+  }
+  return mask;
+}

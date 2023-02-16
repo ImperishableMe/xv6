@@ -75,6 +75,18 @@ int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+  uint64 base, mask;
+  int np;
+  argaddr(0, &base);
+  argint(1, &np);
+  argaddr(2, &mask);
+
+  printf("%p %d %p\n", base, np, mask);
+  uint32 a_mask = get_access_mask(base, np);
+  // printf("got access mask %d\n", a_mask);
+  if (copyout(myproc()->pagetable, mask, (char *)&a_mask, sizeof(uint32)) < 0) {
+    return -1;
+  }
   return 0;
 }
 #endif
